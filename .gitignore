@@ -1,0 +1,23 @@
+# Archivos de compilación y binarios
+build/
+bin/
+obj/
+*.o
+*.pyc
+
+# Archivos temporales de ns-3
+.lock-waf_*
+.ns3-cookie
+cmake-cache/
+CMakeFiles/
+Makefile
+cmake_install.cmake
+CMakeCache.txt
+
+# Configuración de VS Code
+.vscode/
+
+# Salidas de simulaciones (Archivos .pcap, .tr, etc.)
+*.pcap
+*.tr
+*.pcapng
