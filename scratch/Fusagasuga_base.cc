@@ -40,11 +40,8 @@ main(int argc, char* argv[])
     Time::SetResolution(Time::NS);
     LogComponentEnable("UdpEchoClientApplication", LOG_LEVEL_INFO);
     LogComponentEnable("UdpEchoServerApplication", LOG_LEVEL_INFO);
-
-    //Dispositivos 2
-    NodeContainer nodes;  
-    nodes.Create(2);
-
+    
+    /*
     //cable punto a punto entre los dispositivos con velocidad de 5Mbps y retraso de 2ms
     PointToPointHelper pointToPoint; 
     pointToPoint.SetDeviceAttribute("DataRate", StringValue("5Mbps"));
@@ -68,22 +65,42 @@ main(int argc, char* argv[])
     //instalamos una aplicación de servidor de eco UDP en el nodo 1 para escuchar en el puerto 9 (echo protocol)
     UdpEchoServerHelper echoServer(9);
 
+
+    //esto lo que hace es instalar la aplicación de servidor de eco en el nodo 1, y luego iniciar la aplicación en el segundo 1.0 y detenerla en el segundo 10.0 para que no se quede corriendo toda la simulación
     ApplicationContainer serverApps = echoServer.Install(nodes.Get(1));
     serverApps.Start(Seconds(1.0));
     serverApps.Stop(Seconds(10.0));
 
+    //instalamos una aplicación de cliente de eco UDP en el nodo 0 para enviar paquetes al servidor en el nodo 1, usando la dirección IP del nodo 1 y el puerto 9 (echo protocol)
     UdpEchoClientHelper echoClient(interfaces.GetAddress(1), 9);
-    echoClient.SetAttribute("MaxPackets", UintegerValue(1));
-    echoClient.SetAttribute("Interval", TimeValue(Seconds(1.0)));
-    echoClient.SetAttribute("PacketSize", UintegerValue(1024));
-
+    echoClient.SetAttribute("MaxPackets", UintegerValue(1));  //lo que hace es configurar el cliente para que envíe solo un paquete al servidor, y luego se detenga
+    echoClient.SetAttribute("Interval", TimeValue(Seconds(1.0))); //lo que hace es configurar el cliente para que espere 1 segundo entre cada paquete que envía al servidor, pero como solo va a enviar un paquete, esto no tiene mucho efecto
+    echoClient.SetAttribute("PacketSize", UintegerValue(1024)); //lo que hace es configurar el cliente para que envíe paquetes de 1024 bytes al servidor, pero como solo va a enviar un paquete, esto no tiene mucho efecto
+    
+    //esto lo que hace es instalar la aplicación de cliente de eco en el nodo 0, y luego iniciar la aplicación en el segundo 2.0 y detenerla en el segundo 10.0 para que no se quede corriendo toda la simulación
     ApplicationContainer clientApps = echoClient.Install(nodes.Get(0));
     clientApps.Start(Seconds(2.0));
     clientApps.Stop(Seconds(10.0));
+    */
+   
+    //Dispositivo TVWS en la zona rural de Fusagasuga
+    NodeContainer baseStation;
+    baseStation.Create(1);
+
+    //CPE en la zona rural de Fusagasuga
+    NodeContainer ruralCPE;
+    ruralCPE.Create(3);
+
+
+
 
     AnimationInterface anim("fusagasuga-anim.xml");
-    anim.SetConstantPosition(nodes.Get(0), 0, 50); //estaciòn base TVWS
-    anim.SetConstantPosition(nodes.Get(1), 100, 50);  //en CPE en la zona rural
+    anim.SetConstantPosition(baseStation.Get(0), 0, 0); //estaciòn base TVWS
+    anim.SetConstantPosition(ruralCPE.Get(0), 8000, 8000);  //en CPE en la zona rural
+    anim.SetConstantPosition(ruralCPE.Get(1), 4000, 0);  //en CPE en la zona rural
+    anim.SetConstantPosition(ruralCPE.Get(2), 7000, 500); //en CPE en la zona rural
+
+    
 
     Simulator::Run();
     Simulator::Destroy();
