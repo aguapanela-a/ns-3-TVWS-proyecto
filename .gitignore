@@ -14,10 +14,14 @@ Makefile
 cmake_install.cmake
 CMakeCache.txt
 
-# Configuración de VS Code
+# Configuración de VS Code#
 .vscode/
 
 # Salidas de simulaciones (Archivos .pcap, .tr, etc.)
 *.pcap
 *.tr
 *.pcapng
+
+# Archivos de bindings de Python (generados)
+bindings/python/ns__init__.py
+bindings/python/*.pyc
