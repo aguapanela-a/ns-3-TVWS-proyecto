@@ -41,48 +41,6 @@ main(int argc, char* argv[])
     Time::SetResolution(Time::NS);
     LogComponentEnable("UdpEchoClientApplication", LOG_LEVEL_INFO);
     LogComponentEnable("UdpEchoServerApplication", LOG_LEVEL_INFO);
-    
-    /*
-    //cable punto a punto entre los dispositivos con velocidad de 5Mbps y retraso de 2ms
-    PointToPointHelper pointToPoint; 
-    pointToPoint.SetDeviceAttribute("DataRate", StringValue("5Mbps"));
-    pointToPoint.SetChannelAttribute("Delay", StringValue("2ms"));
-
-    //instalamos el canal punto a punto entre los nodos
-    NetDeviceContainer devices;
-    devices = pointToPoint.Install(nodes);
-
-    //instalamos el stack de internet en los nodos (para que puedan usar el protocolo IP)
-    InternetStackHelper stack;
-    stack.Install(nodes);
-    
-    //asignamos direcciòn IP y máscara a los dispositivos usando el helper Ipv4AddressHelper
-    Ipv4AddressHelper address;
-    address.SetBase("10.1.1.0", "255.255.255.0");
-
-    //asignamos direcciones IP a los dispositivos y obtenemos un contenedor de interfaces para usarlas posteriormente
-    Ipv4InterfaceContainer interfaces = address.Assign(devices);
-    
-    //instalamos una aplicación de servidor de eco UDP en el nodo 1 para escuchar en el puerto 9 (echo protocol)
-    UdpEchoServerHelper echoServer(9);
-
-
-    //esto lo que hace es instalar la aplicación de servidor de eco en el nodo 1, y luego iniciar la aplicación en el segundo 1.0 y detenerla en el segundo 10.0 para que no se quede corriendo toda la simulación
-    ApplicationContainer serverApps = echoServer.Install(nodes.Get(1));
-    serverApps.Start(Seconds(1.0));
-    serverApps.Stop(Seconds(10.0));
-
-    //instalamos una aplicación de cliente de eco UDP en el nodo 0 para enviar paquetes al servidor en el nodo 1, usando la dirección IP del nodo 1 y el puerto 9 (echo protocol)
-    UdpEchoClientHelper echoClient(interfaces.GetAddress(1), 9);
-    echoClient.SetAttribute("MaxPackets", UintegerValue(1));  //lo que hace es configurar el cliente para que envíe solo un paquete al servidor, y luego se detenga
-    echoClient.SetAttribute("Interval", TimeValue(Seconds(1.0))); //lo que hace es configurar el cliente para que espere 1 segundo entre cada paquete que envía al servidor, pero como solo va a enviar un paquete, esto no tiene mucho efecto
-    echoClient.SetAttribute("PacketSize", UintegerValue(1024)); //lo que hace es configurar el cliente para que envíe paquetes de 1024 bytes al servidor, pero como solo va a enviar un paquete, esto no tiene mucho efecto
-    
-    //esto lo que hace es instalar la aplicación de cliente de eco en el nodo 0, y luego iniciar la aplicación en el segundo 2.0 y detenerla en el segundo 10.0 para que no se quede corriendo toda la simulación
-    ApplicationContainer clientApps = echoClient.Install(nodes.Get(0));
-    clientApps.Start(Seconds(2.0));
-    clientApps.Stop(Seconds(10.0));
-    */
    
     //Dispositivo TVWS en la zona rural de Fusagasuga
     NodeContainer baseStation;
@@ -93,45 +51,65 @@ main(int argc, char* argv[])
     ruralCPE.Create(3);
 
 
-
-
-    AnimationInterface anim("fusagasuga-anim.xml");
-    anim.SetConstantPosition(baseStation.Get(0), 0, 0); //estaciòn base TVWS
-    anim.SetConstantPosition(ruralCPE.Get(0), 8000, 8000);  //en CPE en la zona rural
-    anim.SetConstantPosition(ruralCPE.Get(1), 4000, 0);  //en CPE en la zona rural
-    anim.SetConstantPosition(ruralCPE.Get(2), 7000, 500); //en CPE en la zona rural
-
-
     //configuraciòn para la estaciòn base TVWS
     //capa fìsica
 
     //se crea un canal de espectro para la estaciòn base TVWS y los CPE en la zona rural de Fusagasuga
-    Ptr<MultiModelSpectrumChannel> channel = CreateObject<MultiModelSpectrumChannel>();
+    Ptr<MultiModelSpectrumChannel> channel = CreateObject<MultiModelSpectrumChannel>(); 
+
+    //modelo de pèrdida de propagaciòn que simula las condiciones de propagaciòn en zonas rurales, con un exponente de pérdida de 3.0 -> algunos obstaculos
+    Ptr<LogDistancePropagationLossModel> lossModel = CreateObject<LogDistancePropagationLossModel>();
+    lossModel->SetAttribute("Exponent", DoubleValue(3.0)); // Exponente
+    
+    //configuraciòn de MAC para el enlace fìsico inalambrico entre la estaciòn base TVWS y los CPE en la zona rural de Fusagasuga
+    WifiMacHelper wifiMacHelper;
+    
+    //nombre de la red que transmite la estaciòn base TVWS
+    Ssid ssid = Ssid("Adaptrum-TVWS-Fusagasuga");
+    
+    //hacemos que la base TVWS sea un punto de acceso
+    wifiMacHelper.SetType("ns3::ApWifiMac",
+                          "Ssid", SsidValue(ssid));
+
+
+    //WifiHelper con un wifi manager ideal, pues el dispositivo Adaptrum TVWS es inteligente y se adapta a las condiciones del canal de espectro
+    WifiHelper wifiHelper; 
+    wifiHelper.SetStandard(WIFI_STANDARD_80211a);
+    wifiHelper.SetRemoteStationManager("ns3::IdealWifiManager");
+    
+    //se crea un modelo de perdida de propagacion de Friis para simular las condiciones de propagaciòn en zonas rurales, con una frecuencia de 515 MHz para la banda UHF
+    Ptr<FriisPropagationLossModel> friisModel = CreateObject<FriisPropagationLossModel>();
+    friisModel->SetAttribute("Frequency", DoubleValue(515e6)); // Frecuencia de 515 MHz para la banda UHF
+
+    //se encadena el modelo de propagaciòn de Friis con el modelo de pèrdida de propagaciòn log-distance para simular las condiciones de propagaciòn en zonas rurales por distancias largas y algunos obstaculos
+    friisModel->SetNext(lossModel); 
+    channel->AddPropagationLossModel(friisModel); //se asigna el modelo de propagaciòn encadenado al canal de espectro
 
     //se inicializa un auxiliar para configurar el canal de espectro con las caracterìsticas de las zonas rurales
     SpectrumWifiPhyHelper wifiPhyHelper;
 
-    //se asigna el espectro a la capa fìsica con el auxiliar de wifi
+    //se asigna el espectro a la capa fìsica con el auxiliar de wifi para la banda UHF
     wifiPhyHelper.SetChannel(channel);
-
-    //se le asigna un ancho de banda de 6 MHz a la capa fìsica con el auxiliar de wifi
-    wifiPhyHelper.Set("ChannelWidth", UintegerValue(6));
-
-    //se le asigna una frecuencia dentro de la bana UHF de 515 mHz al canal de espectro con el auxiliar de wifi
-    wifiPhyHelper.Set("Frequency", UintegerValue(515000000));
-
-    //se asigna un rango de potencia de transmision entre 15 y 23 dBm al canal de espectro con el auxiliar de wifi
-    wifiPhyHelper.Set("TxPowerStart", DoubleValue(15));
-    wifiPhyHelper.Set("TxPowerEnd", DoubleValue(23));
+//    wifiPhyHelper.AddChannel(channel, {470, 698}); // Banda WiFi UHF (470-698 MHz)  
+//    wifiPhyHelper.Set("ChannelSettings", StringValue("{channelNumber: 21, channelWidth: 6, BandName: BAND_470MHZ}"));
+ 
+    
+    //se asigna un rango de potencia de transmision de 20dBm al canal de espectro con el auxiliar de wifi
+    wifiPhyHelper.Set("TxPowerStart", DoubleValue(20));
+    wifiPhyHelper.Set("TxPowerEnd", DoubleValue(20));
 
 
-    //configuraciòn de MAC para el enlace fìsico
+    //se inserta el canal configurador, el MAC y el cntenedor de la etacin base TVWS para crear el dispositivo de red inalambrico
+    NetDeviceContainer baseDevice = wifiHelper.Install(wifiPhyHelper, wifiMacHelper, baseStation);
 
 
+    //uso de AnimationInterface para visualizar la topologia de red en NetAnim
+    AnimationInterface anim("fusagasuga-anim.xml");
+    anim.SetConstantPosition(baseStation.Get(0), 0, 0); //estaciòn base TVWS
+    anim.SetConstantPosition(ruralCPE.Get(0), 800, 800);  //en CPE en la zona rural
+    anim.SetConstantPosition(ruralCPE.Get(1), 400, 0);  //en CPE en la zona rural
+    anim.SetConstantPosition(ruralCPE.Get(2), 700, 50); //en CPE en la zona rural
 
-    //WifiHelper wifiHelper;
-    //wifiHelper.SetRemoteStationManager("ns3::ConstantRateWifiManager");
-    //NetDeviceContainer devices = wifiHelper.Install(baseStation);
 
     Simulator::Run();
     Simulator::Destroy();
