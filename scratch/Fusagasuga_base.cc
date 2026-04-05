@@ -20,6 +20,8 @@
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/spectrum-module.h"
+#include "ns3/mobility-module.h"
+#include "ns3/position-allocator.h"
 
 // Default Network Topology
 //
@@ -102,16 +104,42 @@ main(int argc, char* argv[])
     //se inserta el canal configurador, el MAC y el cntenedor de la etacin base TVWS para crear el dispositivo de red inalambrico
     NetDeviceContainer baseDevice = wifiHelper.Install(wifiPhyHelper, wifiMacHelper, baseStation);
 
+    std::cout << "antes de aplicar coordenadas" << std::endl;
+
+    //crear helper de movilidad para agru
+    MobilityHelper mobility;
+
+    //se crea el posicionAlloc para asignar coordenadas a los nodos
+    Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator>();
+
+    //se asignan coordenadas a la estaciòn base TVWS y a los CPE en la zona rural de Fusagasuga
+    positionAlloc->Add(Vector(0.0, 0.0, 0.0)); // Coordenadas para la estaciòn base TVWS
+
+    positionAlloc->Add(Vector(700.0, 850.0, 0.0)); // Coordenadas para el primer CPE
+    positionAlloc->Add(Vector(400.0, 100.0, 0.0)); // Coordenadas para el segundo CPE
+    positionAlloc->Add(Vector(70.0, 700.0, 0.0)); // Coordenadas para el tercer CPE
+
+    //se asigna el posicionAlloc al helper de movilidad y se instala en la estaciòn base TVWS y los CPE en la zona rural de Fusagasuga
+    mobility.SetPositionAllocator(positionAlloc);
+    mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
+    mobility.Install(baseStation);
+    mobility.Install(ruralCPE);
 
     //uso de AnimationInterface para visualizar la topologia de red en NetAnim
     AnimationInterface anim("fusagasuga-anim.xml");
-    anim.SetConstantPosition(baseStation.Get(0), 0, 0); //estaciòn base TVWS
-    anim.SetConstantPosition(ruralCPE.Get(0), 800, 800);  //en CPE en la zona rural
-    anim.SetConstantPosition(ruralCPE.Get(1), 400, 0);  //en CPE en la zona rural
-    anim.SetConstantPosition(ruralCPE.Get(2), 700, 50); //en CPE en la zona rural
+
+    anim.UpdateNodeDescription(baseStation.Get(0), "Base TVWS");
+    for(uint32_t i = 0; i < ruralCPE.GetN(); ++i)
+    {
+        anim.UpdateNodeDescription(ruralCPE.Get(i), "CPE Rural");
+    }
 
 
+    Simulator::Stop(Seconds(10.0));
     Simulator::Run();
+
+    std::cout << "Simulation finished." << std::endl;
+
     Simulator::Destroy();
     return 0;
 }
