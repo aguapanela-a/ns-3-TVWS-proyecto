@@ -120,9 +120,47 @@ main(int argc, char* argv[])
     NetDeviceContainer cpeDevices = wifiHelper.Install(wifiPhyHelper, wifiMacHelper, ruralCPE);
 
 
+    //configuraciòn de la pila de protocolos TCP/IP para la estaciòn base TVWS y los CPE en la zona rural de Fusagasuga
+    InternetStackHelper stack;
+    stack.Install(baseStation);
+    stack.Install(ruralCPE);
+
+    //se crea una direcciòn de red IPv4 y una màscara de sub red a la estaciòn base TVWS y los CPE en la zona rural de Fusagasuga
+    Ipv4AddressHelper address;
+    address.SetBase("192.168.1.0","255.255.255.0");
+
+    //se asigna la IPv4 al contenedor de dispositivos de red de la estaciòn base TVWS (al ser el primero quedarà con ip 192.168.1.1)
+    Ipv4InterfaceContainer baseInterface = address.Assign(baseDevice);
+
+    //se asigna la IPv4 al contenedor de dispositivos de red de los CPE en la zona rural de Fusagasuga (quedaran con ip .2, .3 y .4)
+    Ipv4InterfaceContainer cpeInterface = address.Assign(cpeDevices);
+
+    //se crea el servidor UDP Echo (eco o ping) en la estaciòn base para comprobar la conectividad con los CPE en la zona rural de Fusagasuga
+    UdpEchoServerHelper echoServer(9); // El servidor escucha en el puerto 9
+
+    //crea un contenedor de aplicaciones para estaciòn base y guarda ahì el nodo 0 del contenedor baseStation con el servidor UDP Echo instalado, y se configura para que inicie en el segundo 1.0 y termine en el segundo 10.0 de la simulaciòn
+    ApplicationContainer serverApps = echoServer.Install(baseStation.Get(0));
+    serverApps.Start(Seconds(1.0));
+    serverApps.Stop(Seconds(10.0));
+
+    //se crea el cliente UDP Echo (eco o ping) y se le pasa la direcciòn IPv4 que se asignò al primer dispositivo de red (estaciòn base) y el puerto por el cuàl debe hacer eco
+    UdpEchoClientHelper echoClient(baseInterface.GetAddress(0), 9);
+
+    echoClient.SetAttribute("MaxPackets", UintegerValue(5)); //harà màximo 5 pings
+    echoClient.SetAttribute("Interval", TimeValue(Seconds(1.0))); //harà un ping cada segundo
+    echoClient.SetAttribute("PacketSize", UintegerValue(1024)); //harà que cada ping tenga un tamaño de 1024 bytes (1 KB)
+
+    //crea un contenedor de aplicaciones apra los CPEs y guarda ahì el nodo 0 del contenedor ruralCPE con el cliente UDP Echo instalado, y se configura para que inicie en el segundo 2.0 y termine en el segundo 10.0 de la simulaciòn
+    ApplicationContainer clientApps = echoClient.Install(ruralCPE.Get(0));
+    clientApps.Start(Seconds(2.0));
+    clientApps.Stop(Seconds(10.0));
+
+ 
+
+
     std::cout << "antes de aplicar coordenadas" << std::endl;
 
-    //crear helper de movilidad para agru
+    //crear helper de movilidad para agrupar la asignaciòn de coordenadas a la estaciòn base TVWS y los CPE en la zona rural de Fusagasuga
     MobilityHelper mobility;
 
     //se crea el posicionAlloc para asignar coordenadas a los nodos
