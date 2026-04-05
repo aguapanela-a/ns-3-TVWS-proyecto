@@ -12,13 +12,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-
+#include "ns3/wifi-module.h"
 #include "ns3/applications-module.h"
 #include "ns3/core-module.h"
 #include "ns3/internet-module.h"
 #include "ns3/netanim-module.h"
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
+#include "ns3/spectrum-module.h"
 
 // Default Network Topology
 //
@@ -100,7 +101,37 @@ main(int argc, char* argv[])
     anim.SetConstantPosition(ruralCPE.Get(1), 4000, 0);  //en CPE en la zona rural
     anim.SetConstantPosition(ruralCPE.Get(2), 7000, 500); //en CPE en la zona rural
 
-    
+
+    //configuraciòn para la estaciòn base TVWS
+    //capa fìsica
+
+    //se crea un canal de espectro para la estaciòn base TVWS y los CPE en la zona rural de Fusagasuga
+    Ptr<MultiModelSpectrumChannel> channel = CreateObject<MultiModelSpectrumChannel>();
+
+    //se inicializa un auxiliar para configurar el canal de espectro con las caracterìsticas de las zonas rurales
+    SpectrumWifiPhyHelper wifiPhyHelper;
+
+    //se asigna el espectro a la capa fìsica con el auxiliar de wifi
+    wifiPhyHelper.SetChannel(channel);
+
+    //se le asigna un ancho de banda de 6 MHz a la capa fìsica con el auxiliar de wifi
+    wifiPhyHelper.Set("ChannelWidth", UintegerValue(6));
+
+    //se le asigna una frecuencia dentro de la bana UHF de 515 mHz al canal de espectro con el auxiliar de wifi
+    wifiPhyHelper.Set("Frequency", UintegerValue(515000000));
+
+    //se asigna un rango de potencia de transmision entre 15 y 23 dBm al canal de espectro con el auxiliar de wifi
+    wifiPhyHelper.Set("TxPowerStart", DoubleValue(15));
+    wifiPhyHelper.Set("TxPowerEnd", DoubleValue(23));
+
+
+    //configuraciòn de MAC para el enlace fìsico
+
+
+
+    //WifiHelper wifiHelper;
+    //wifiHelper.SetRemoteStationManager("ns3::ConstantRateWifiManager");
+    //NetDeviceContainer devices = wifiHelper.Install(baseStation);
 
     Simulator::Run();
     Simulator::Destroy();
