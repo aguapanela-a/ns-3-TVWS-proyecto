@@ -59,9 +59,18 @@ main(int argc, char* argv[])
     //se crea un canal de espectro para la estaciòn base TVWS y los CPE en la zona rural de Fusagasuga
     Ptr<MultiModelSpectrumChannel> channel = CreateObject<MultiModelSpectrumChannel>(); 
 
-    //modelo de pèrdida de propagaciòn que simula las condiciones de propagaciòn en zonas rurales, con un exponente de pérdida de 3.0 -> algunos obstaculos
+    //modelo de pèrdida de propagaciòn que simula las condiciones de atenuaciòn por distancia y entorno, con un exponente de pérdida de 3.0 -> algunos obstaculos
     Ptr<LogDistancePropagationLossModel> lossModel = CreateObject<LogDistancePropagationLossModel>();
     lossModel->SetAttribute("Exponent", DoubleValue(3.0)); // Exponente
+
+    //se crea un modelo de perdida de propagacion de Friis para simular las condiciones de propagaciòn en zonas rurales, con una frecuencia de 515 MHz para la banda UHF
+    Ptr<FriisPropagationLossModel> friisModel = CreateObject<FriisPropagationLossModel>();
+    friisModel->SetAttribute("Frequency", DoubleValue(515e6)); // Frecuencia de 515 MHz para la banda UHF
+
+    //se encadena el modelo de propagaciòn de Friis con el modelo de pèrdida de propagaciòn log-distance para simular las condiciones de propagaciòn en zonas rurales por distancias largas y algunos obstaculos
+    friisModel->SetNext(lossModel); 
+    channel->AddPropagationLossModel(friisModel); //se asigna el modelo de propagaciòn encadenado al canal de espectro
+
     
     //configuraciòn de MAC para el enlace fìsico inalambrico entre la estaciòn base TVWS y los CPE en la zona rural de Fusagasuga
     WifiMacHelper wifiMacHelper;
@@ -69,7 +78,7 @@ main(int argc, char* argv[])
     //nombre de la red que transmite la estaciòn base TVWS
     Ssid ssid = Ssid("Adaptrum-TVWS-Fusagasuga");
     
-    //hacemos que la base TVWS sea un punto de acceso
+    //hacemos que la base TVWS sea un punto de acceso y se ke asigna el nombre de la red con el ssid definido anteriormente
     wifiMacHelper.SetType("ns3::ApWifiMac",
                           "Ssid", SsidValue(ssid));
 
@@ -78,14 +87,6 @@ main(int argc, char* argv[])
     WifiHelper wifiHelper; 
     wifiHelper.SetStandard(WIFI_STANDARD_80211a);
     wifiHelper.SetRemoteStationManager("ns3::IdealWifiManager");
-    
-    //se crea un modelo de perdida de propagacion de Friis para simular las condiciones de propagaciòn en zonas rurales, con una frecuencia de 515 MHz para la banda UHF
-    Ptr<FriisPropagationLossModel> friisModel = CreateObject<FriisPropagationLossModel>();
-    friisModel->SetAttribute("Frequency", DoubleValue(515e6)); // Frecuencia de 515 MHz para la banda UHF
-
-    //se encadena el modelo de propagaciòn de Friis con el modelo de pèrdida de propagaciòn log-distance para simular las condiciones de propagaciòn en zonas rurales por distancias largas y algunos obstaculos
-    friisModel->SetNext(lossModel); 
-    channel->AddPropagationLossModel(friisModel); //se asigna el modelo de propagaciòn encadenado al canal de espectro
 
     //se inicializa un auxiliar para configurar el canal de espectro con las caracterìsticas de las zonas rurales
     SpectrumWifiPhyHelper wifiPhyHelper;
@@ -96,13 +97,26 @@ main(int argc, char* argv[])
 //    wifiPhyHelper.Set("ChannelSettings", StringValue("{channelNumber: 21, channelWidth: 6, BandName: BAND_470MHZ}"));
  
     
-    //se asigna un rango de potencia de transmision de 20dBm al canal de espectro con el auxiliar de wifi
-    wifiPhyHelper.Set("TxPowerStart", DoubleValue(20));
-    wifiPhyHelper.Set("TxPowerEnd", DoubleValue(20));
+    //se asigna un rango de potencia de transmision de 20.0dBm al canal de espectro, pues es el màximo que soporta el dipositivo Adaptrum TVWS, lo que permite alcanzar distancias largas en zonas rurales
+    wifiPhyHelper.Set("TxPowerStart", DoubleValue(20.0));
+    wifiPhyHelper.Set("TxPowerEnd", DoubleValue(20.0));
+
+    //se realiza el ajjsto de sensibilidad de recepciòn con valores acordes al dispositivo Adaptrum TVWS para la banda UHF, lo que permite una mejor recepciòn de la señal en condiciones de propagaciòn adversas
+    wifiPhyHelper.Set("EnergyDetectionThreshold", DoubleValue(-98.0)); // Umbral de detección de energía
+    wifiPhyHelper.Set("CcaMode1Threshold", DoubleValue(-98.0)); // Umbral de modo CCA 1
 
 
     //se inserta el canal configurador, el MAC y el cntenedor de la etacin base TVWS para crear el dispositivo de red inalambrico
     NetDeviceContainer baseDevice = wifiHelper.Install(wifiPhyHelper, wifiMacHelper, baseStation);
+
+    //configuraciòn para los CPE en la zona rural de Fusagasuga
+    //se hace que los CPE sean estaciones y se asigna el nombre de la red
+    wifiMacHelper.SetType("ns3::StaWifiMac",
+                          "Ssid", SsidValue(ssid));
+
+    //se inserta el canal configurador, el MAC y el cntenedor de los CPE para crear los dispositivos de red inalambricos
+    NetDeviceContainer cpeDevices = wifiHelper.Install(wifiPhyHelper, wifiMacHelper, ruralCPE);
+    
 
     std::cout << "antes de aplicar coordenadas" << std::endl;
 
