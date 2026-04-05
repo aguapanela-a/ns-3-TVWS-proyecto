@@ -40,6 +40,10 @@ main(int argc, char* argv[])
     CommandLine cmd(__FILE__);
     cmd.Parse(argc, argv);
 
+    //Ajuste de sensibilidad de recepciòn con los valores acordes al dispositivo Adaptrum TVWS para la banda UHF, lo que permite una mejor recepciòn de la señal en condiciones de propagaciòn adversas
+    Config::SetDefault("ns3::WifiPhy::EnergyDetectionThreshold", DoubleValue(-98.0)); // Umbral de detección de energía
+    Config::SetDefault("ns3::WifiPhy::CcaEdThreshold", DoubleValue(-98.0)); // Umbral de modo CCA 1
+
     Time::SetResolution(Time::NS);
     LogComponentEnable("UdpEchoClientApplication", LOG_LEVEL_INFO);
     LogComponentEnable("UdpEchoServerApplication", LOG_LEVEL_INFO);
@@ -101,10 +105,8 @@ main(int argc, char* argv[])
     wifiPhyHelper.Set("TxPowerStart", DoubleValue(20.0));
     wifiPhyHelper.Set("TxPowerEnd", DoubleValue(20.0));
 
-    //se realiza el ajjsto de sensibilidad de recepciòn con valores acordes al dispositivo Adaptrum TVWS para la banda UHF, lo que permite una mejor recepciòn de la señal en condiciones de propagaciòn adversas
-    wifiPhyHelper.Set("EnergyDetectionThreshold", DoubleValue(-98.0)); // Umbral de detección de energía
-    wifiPhyHelper.Set("CcaMode1Threshold", DoubleValue(-98.0)); // Umbral de modo CCA 1
-
+    
+    std::cout << "antes de instalar dispositivos" << std::endl;
 
     //se inserta el canal configurador, el MAC y el cntenedor de la etacin base TVWS para crear el dispositivo de red inalambrico
     NetDeviceContainer baseDevice = wifiHelper.Install(wifiPhyHelper, wifiMacHelper, baseStation);
@@ -116,7 +118,7 @@ main(int argc, char* argv[])
 
     //se inserta el canal configurador, el MAC y el cntenedor de los CPE para crear los dispositivos de red inalambricos
     NetDeviceContainer cpeDevices = wifiHelper.Install(wifiPhyHelper, wifiMacHelper, ruralCPE);
-    
+
 
     std::cout << "antes de aplicar coordenadas" << std::endl;
 
