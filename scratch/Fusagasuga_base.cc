@@ -48,9 +48,9 @@ main(int argc, char* argv[])
     int pingInterval = 1; // Intervalo entre pings en segundos
     int packetSize = 1024; // Tamaño de cada ping en bytes (1 KB)
     double txPower = 23.0; // Potencia de transmisión en dBm
-    double txRxExternalAntennaGain = 11.0; // Ganancia de transmisión  y recepción de la antena externa en dBi
+    double txRxSectorAntenna = 11.0; // Ganancia de transmisión  y recepción de la antena sectorial en dBi
     double sensitivity = -98.0; // Sensibilidad de recepción en dBm, acorde a las caracterìsticas del dispositivo Adaptrum TVWS para la banda UHF
-    int frecuencyFriis = 515; // Frecuencia de propagación de Friis en MHz
+    int frecuencyUHF = 515; // Frecuencia de propagación de dispositivo en MHz
     double pathLossExponent = 3.0; // Exponente de pérdida de propagación
     int clientNodes = 3; // Cantidad de nodos cliente (CPEs) en la zona rural de Fusagasuga
 
@@ -62,7 +62,7 @@ main(int argc, char* argv[])
     Time::SetResolution(Time::NS);
     LogComponentEnable("UdpEchoClientApplication", LOG_LEVEL_INFO);
     LogComponentEnable("UdpEchoServerApplication", LOG_LEVEL_INFO);
-    LogComponentEnable("WifiPhy", LOG_LEVEL_INFO);
+    //LogComponentEnable("WifiPhy", LOG_LEVEL_INFO);
    
     //Dispositivo TVWS en la zona rural de Fusagasuga
     NodeContainer baseStation;
@@ -77,16 +77,29 @@ main(int argc, char* argv[])
     //capa fìsica
 
     //se crea un canal de espectro para la estaciòn base TVWS y los CPE en la zona rural de Fusagasuga
-    YansWifiChannelHelper channel = YansWifiChannelHelper::Default();
+    YansWifiChannelHelper channel;
 
-    //se encadena el modelo de propagaciòn de Friis (515 mHz de la banda UHF) con el modelo de pèrdida de propagaciòn log-distance para simular las condiciones de propagaciòn en zonas rurales por distancias largas y algunos obstaculos
-    channel.AddPropagationLoss("ns3::LogDistancePropagationLossModel", "Exponent", DoubleValue(pathLossExponent));
-    channel.AddPropagationLoss("ns3::FriisPropagationLossModel", "Frequency", DoubleValue(frecuencyFriis * 1e6));
+    channel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel"); //se asigna un modelo de retardo de propagaciòn constante, lo que permite una mejor simulaciòn de las condiciones de propagaciòn en zonas rurales por distancias largas y algunos obstaculos
 
+    //càlculo de la pérdida de propagación a 1 metro para la frecuencia de 515 MHz usando la ecuaciòn de transmisiòn de Friis simplificada
+    double distance = 1.0; // distancia de referencia en metros
+    double frequency = frecuencyUHF * 1e6; // frecuencia en mHz (515 MHz)
+
+    //ecuaciòn de transmisiòn de Friis simplificada para calcular la pérdida de propagación a 1 metro en dB, con el valor de 26.67 dB para la frecuencia de 515 MHz que es la deseada para una correcta simulaciòn del uso de TVWS
+    double lossAt1m = 20 * std::log10(distance) + 20 * std::log10(frequency) - 147.55; 
+
+
+    channel.AddPropagationLoss("ns3::LogDistancePropagationLossModel",
+                             "Exponent", DoubleValue(pathLossExponent),
+                            "ReferenceDistance", DoubleValue(distance),
+                            "ReferenceLoss", DoubleValue(lossAt1m)); // ReferenceLoss es la pérdida de propagación a la distancia de referencia en dB, con el valor calculado de 26.67 dB para la frecuencia de 515 MHz.
 
     //creaciòn del helper de la capa fisica para usar el canal configurado, y se asigna el canal al helper de la capa fìsica
     YansWifiPhyHelper yansWifiPhy;
     yansWifiPhy.SetChannel(channel.Create());
+
+    //ajuste del ancho de banda de la señal de TVWS a 6 MHz, acorde a las caracterìsticas del dispositivo Adaptrum TVWS para la banda UHF
+    yansWifiPhy.Set("ChannelWidth", UintegerValue(6));
 
     //configuraciòn de la capa fìsica para el enlace inalambrico entre la estaciòn base TVWS y los CPE en la zona rural de Fusagasuga, con valores acordes a las caracterìsticas del dispositivo Adaptrum TVWS para la banda UHF, lo que permite una mejor recepciòn de la señal en condiciones de propagaciòn adversas
     //se asigna la potencia de transmisiòn
@@ -94,12 +107,12 @@ main(int argc, char* argv[])
     yansWifiPhy.Set("TxPowerEnd", DoubleValue(txPower));
 
     //Configuraciòn de antena externaLog-Periodic de 11dBi de acuerdo a las caracterìsticas de los dispositivos Adaptrum TVWS para la banda UHF, lo que permite una mejor recepciòn de la señal en condiciones de propagaciòn adversas
-    yansWifiPhy.Set("TxGain", DoubleValue(txRxExternalAntennaGain)); // Ganancia de transmisión en dBi
-    yansWifiPhy.Set("RxGain", DoubleValue(txRxExternalAntennaGain)); // Ganancia de recepción en dBi
+    yansWifiPhy.Set("TxGain", DoubleValue(txRxSectorAntenna)); // Ganancia de transmisión en dBi
+    yansWifiPhy.Set("RxGain", DoubleValue(txRxSectorAntenna)); // Ganancia de recepción en dBi
 
     //se asigna la sensibilidad de recepciòn y el umbral de detecciòn de portadora
     yansWifiPhy.Set("RxSensitivity", DoubleValue(sensitivity)); // RxSensitivity es el umbral de potencia de recepciòn en dBm, y es acorde a las caracterìsticas del dispositivo Adaptrum TVWS para la banda UHF      
-    yansWifiPhy.Set("CcaEdThreshold", DoubleValue(sensitivity)); // CcaEdThreshold es el umbral de energía de detección de portadora en dBm, y es acorde a las caracterìsticas del dispositivo Adaptrum TVWS para la banda UHF
+    yansWifiPhy.Set("CcaEdThreshold", DoubleValue(sensitivity-10.0)); // CcaEdThreshold es el umbral de energía de detección de portadora en dBm, y es acorde a las caracterìsticas del dispositivo Adaptrum TVWS para la banda UHF
     
     //configuraciòn de MAC para el enlace fìsico inalambrico entre la estaciòn base TVWS y los CPE en la zona rural de Fusagasuga
     WifiMacHelper wifiMacHelper;
@@ -115,12 +128,14 @@ main(int argc, char* argv[])
 
     //WifiHelper con un wifi manager ideal, pues el dispositivo Adaptrum TVWS es inteligente y se adapta a las condiciones del canal de espectro
     WifiHelper wifiHelper; 
-    wifiHelper.SetStandard(WIFI_STANDARD_80211be); //se configura el helper de wifi para usar el estandar 802.11be, que es el estandar mìnimo requerido para simular el dispositivo Adaptrum TVWS, lo que permite una mejor simulaciòn de las caracterìsticas del dispositivo en la zona rural de Fusagasuga
+
+    //se configura el helper de wifi para usar el estandar 802.11a, pues usa tecnologìa ODFM, pues asì lo especifica la antena Adaptrum TVWS que se estàn simulando
+    wifiHelper.SetStandard(WIFI_STANDARD_80211a); 
 
     //se configura ConstantRateWifiManager para que el dispositivo Adaptrum TVWS transmita a una tasa de datos constante de 1 Mbps, lo que permite
     wifiHelper.SetRemoteStationManager("ns3::ConstantRateWifiManager",
-                                         "DataMode", StringValue("DsssRate1Mbps"),
-                                         "ControlMode", StringValue("DsssRate1Mbps"));
+                                         "DataMode", StringValue("OfdmRate6Mbps"),
+                                         "ControlMode", StringValue("OfdmRate6Mbps")); // OfdmRate6Mbps es una tasa OFDM de 6 Mbps
 
 
        std::cout << "antes de aplicar coordenadas" << std::endl;
