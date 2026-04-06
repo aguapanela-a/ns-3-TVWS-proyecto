@@ -85,9 +85,9 @@ main(int argc, char* argv[])
     //se asignan coordenadas a la estaciòn base TVWS y a los CPE en la zona rural de Fusagasuga
     positionAlloc->Add(Vector(0.0, 0.0, 0.0)); // Coordenadas para la estaciòn base TVWS
     
-    positionAlloc->Add(Vector(800.0, 100.0, 0.0)); // Coordenadas para el primer CPE
-    positionAlloc->Add(Vector(400.0, 100.0, 0.0)); // Coordenadas para el segundo CPE
-    positionAlloc->Add(Vector(700.0, 700.0, 0.0)); // Coordenadas para el tercer CPE
+    positionAlloc->Add(Vector(10000.0, 6000.0, 0.0)); // Coordenadas para el primer CPE
+    positionAlloc->Add(Vector(4000.0, 1000.0, 0.0)); // Coordenadas para el segundo CPE
+    positionAlloc->Add(Vector(7000.0, 7000.0, 0.0)); // Coordenadas para el tercer CPE
     
     //se asigna el posicionAlloc al helper de movilidad y se instala en la estaciòn base TVWS y los CPE en la zona rural de Fusagasuga
     mobility.SetPositionAllocator(positionAlloc);
@@ -246,13 +246,13 @@ main(int argc, char* argv[])
     //color del nodo de la base
     anim.UpdateNodeColor(baseStation.Get(0), 255, 0, 0); // Rojo para la estaciòn base TVWS
     //tamaño del nodo de la base
-    anim.UpdateNodeSize(baseStation.Get(0), 20, 20); // Tamaño más grande para la estaciòn base TVWS
+    anim.UpdateNodeSize(baseStation.Get(0), 30, 30); // Tamaño más grande para la estaciòn base TVWS
 
     for(uint32_t i = 0; i < ruralCPE.GetN(); ++i)
     {
         anim.UpdateNodeDescription(ruralCPE.Get(i), "CPE Rural");
         anim.UpdateNodeColor(ruralCPE.Get(i), 0, 255, 0); // Verde para los CPE
-        anim.UpdateNodeSize(ruralCPE.Get(i), 10, 10); // Tamaño más pequeño para los CPE
+        anim.UpdateNodeSize(ruralCPE.Get(i), 20, 20); // Tamaño más pequeño para los CPE
     }
     
     
