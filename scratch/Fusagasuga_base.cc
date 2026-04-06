@@ -48,6 +48,8 @@ main(int argc, char* argv[])
     int pingInterval = 1; // Intervalo entre pings en segundos
     int packetSize = 1024; // Tamaño de cada ping en bytes (1 KB)
     double txPower = 23.0; // Potencia de transmisión en dBm
+    double txRxExternalAntennaGain = 11.0; // Ganancia de transmisión  y recepción de la antena externa en dBi
+    double sensitivity = -98.0; // Sensibilidad de recepción en dBm, acorde a las caracterìsticas del dispositivo Adaptrum TVWS para la banda UHF
     int frecuencyFriis = 515; // Frecuencia de propagación de Friis en MHz
     double pathLossExponent = 3.0; // Exponente de pérdida de propagación
     int clientNodes = 3; // Cantidad de nodos cliente (CPEs) en la zona rural de Fusagasuga
@@ -92,12 +94,12 @@ main(int argc, char* argv[])
     yansWifiPhy.Set("TxPowerEnd", DoubleValue(txPower));
 
     //Configuraciòn de antena externaLog-Periodic de 11dBi de acuerdo a las caracterìsticas de los dispositivos Adaptrum TVWS para la banda UHF, lo que permite una mejor recepciòn de la señal en condiciones de propagaciòn adversas
-    yansWifiPhy.Set("TxGain", DoubleValue(11.0)); // Ganancia de transmisión en dBi
-    yansWifiPhy.Set("RxGain", DoubleValue(11.0)); // Ganancia de recepción en dBi
+    yansWifiPhy.Set("TxGain", DoubleValue(txRxExternalAntennaGain)); // Ganancia de transmisión en dBi
+    yansWifiPhy.Set("RxGain", DoubleValue(txRxExternalAntennaGain)); // Ganancia de recepción en dBi
 
     //se asigna la sensibilidad de recepciòn y el umbral de detecciòn de portadora
-    yansWifiPhy.Set("RxSensitivity", DoubleValue(-98.0)); // RxSensitivity es el umbral de potencia de recepciòn en dBm, y es acorde a las caracterìsticas del dispositivo Adaptrum TVWS para la banda UHF      
-    yansWifiPhy.Set("CcaEdThreshold", DoubleValue(-98.0)); // CcaEdThreshold es el umbral de energía para la detección de portadora en dBm, y es acorde a las caracterìsticas del dispositivo Adaptrum TVWS para la banda UHF
+    yansWifiPhy.Set("RxSensitivity", DoubleValue(sensitivity)); // RxSensitivity es el umbral de potencia de recepciòn en dBm, y es acorde a las caracterìsticas del dispositivo Adaptrum TVWS para la banda UHF      
+    yansWifiPhy.Set("CcaEdThreshold", DoubleValue(sensitivity)); // CcaEdThreshold es el umbral de energía de detección de portadora en dBm, y es acorde a las caracterìsticas del dispositivo Adaptrum TVWS para la banda UHF
     
     //configuraciòn de MAC para el enlace fìsico inalambrico entre la estaciòn base TVWS y los CPE en la zona rural de Fusagasuga
     WifiMacHelper wifiMacHelper;
