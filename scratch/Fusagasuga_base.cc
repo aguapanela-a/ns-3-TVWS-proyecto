@@ -77,7 +77,7 @@ main(int argc, char* argv[])
     //se crea un canal de espectro para la estaciòn base TVWS y los CPE en la zona rural de Fusagasuga
     YansWifiChannelHelper channel = YansWifiChannelHelper::Default();
 
-    //se encadena el modelo de propagaciòn de Friis con el modelo de pèrdida de propagaciòn log-distance para simular las condiciones de propagaciòn en zonas rurales por distancias largas y algunos obstaculos
+    //se encadena el modelo de propagaciòn de Friis (515 mHz de la banda UHF) con el modelo de pèrdida de propagaciòn log-distance para simular las condiciones de propagaciòn en zonas rurales por distancias largas y algunos obstaculos
     channel.AddPropagationLoss("ns3::LogDistancePropagationLossModel", "Exponent", DoubleValue(pathLossExponent));
     channel.AddPropagationLoss("ns3::FriisPropagationLossModel", "Frequency", DoubleValue(frecuencyFriis * 1e6));
 
@@ -91,20 +91,24 @@ main(int argc, char* argv[])
     yansWifiPhy.Set("TxPowerStart", DoubleValue(txPower));
     yansWifiPhy.Set("TxPowerEnd", DoubleValue(txPower));
 
+    //Configuraciòn de antena externaLog-Periodic de 11dBi de acuerdo a las caracterìsticas de los dispositivos Adaptrum TVWS para la banda UHF, lo que permite una mejor recepciòn de la señal en condiciones de propagaciòn adversas
+    yansWifiPhy.Set("TxGain", DoubleValue(11.0)); // Ganancia de transmisión en dBi
+    yansWifiPhy.Set("RxGain", DoubleValue(11.0)); // Ganancia de recepción en dBi
+
     //se asigna la sensibilidad de recepciòn y el umbral de detecciòn de portadora
-    //yansWifiPhy.Set("RxSensitivity", DoubleValue(-98.0)); // RxSensitivity es el umbral de potencia de recepciòn en dBm, y es acorde a las caracterìsticas del dispositivo Adaptrum TVWS para la banda UHF      
-    //yansWifiPhy.Set("CcaEdThreshold", DoubleValue(-98.0)); // CcaEdThreshold es el umbral de energía para la detección de portadora en dBm, y es acorde a las caracterìsticas del dispositivo Adaptrum TVWS para la banda UHF
+    yansWifiPhy.Set("RxSensitivity", DoubleValue(-98.0)); // RxSensitivity es el umbral de potencia de recepciòn en dBm, y es acorde a las caracterìsticas del dispositivo Adaptrum TVWS para la banda UHF      
+    yansWifiPhy.Set("CcaEdThreshold", DoubleValue(-98.0)); // CcaEdThreshold es el umbral de energía para la detección de portadora en dBm, y es acorde a las caracterìsticas del dispositivo Adaptrum TVWS para la banda UHF
     
     //configuraciòn de MAC para el enlace fìsico inalambrico entre la estaciòn base TVWS y los CPE en la zona rural de Fusagasuga
     WifiMacHelper wifiMacHelper;
     
     //nombre de la red que transmite la estaciòn base TVWS
-    //Ssid ssid = Ssid("Adaptrum-TVWS-Fusagasuga");
+    Ssid ssid = Ssid("Adaptrum-TVWS-Fusagasuga");
     
     //hacemos que la base TVWS sea un punto de acceso y se ke asigna el nombre de la red con el ssid definido anteriormente
-    //wifiMacHelper.SetType("ns3::ApWifiMac",
-                         // "Ssid", SsidValue(ssid));
-    wifiMacHelper.SetType("ns3::AdhocWifiMac"); //hacemos que la base TVWS sea un nodo adhoc, lo que permite una mayor flexibilidad en la comunicaciòn con los CPE en la zona rural de Fusagasuga, pues el dispositivo Adaptrum TVWS es inteligente y se adapta a las condiciones del canal de espectro
+    wifiMacHelper.SetType("ns3::ApWifiMac",
+                          "Ssid", SsidValue(ssid));
+    //wifiMacHelper.SetType("ns3::AdhocWifiMac"); //hacemos que la base TVWS sea un nodo adhoc, lo que permite una mayor flexibilidad en la comunicaciòn con los CPE en la zona rural de Fusagasuga, pues el dispositivo Adaptrum TVWS es inteligente y se adapta a las condiciones del canal de espectro
 
 
     //WifiHelper con un wifi manager ideal, pues el dispositivo Adaptrum TVWS es inteligente y se adapta a las condiciones del canal de espectro
@@ -145,10 +149,10 @@ main(int argc, char* argv[])
 
     //configuraciòn para los CPE en la zona rural de Fusagasuga
     //se hace que los CPE sean estaciones y se asigna el nombre de la red
-    //wifiMacHelper.SetType("ns3::StaWifiMac",
-    //                      "Ssid", SsidValue(ssid));
+    wifiMacHelper.SetType("ns3::StaWifiMac",
+                          "Ssid", SsidValue(ssid));
 
-    wifiMacHelper.SetType("ns3::AdhocWifiMac"); //hacemos que los CPE sean nodos adhoc, lo que permite una mayor flexibilidad en la comunicaciòn con la estaciòn base TVWS, pues el dispositivo Adaptrum TVWS es inteligente y se adapta a las condiciones del canal de espectro
+    //wifiMacHelper.SetType("ns3::AdhocWifiMac"); //hacemos que los CPE sean nodos adhoc, lo que permite una mayor flexibilidad en la comunicaciòn con la estaciòn base TVWS, pues el dispositivo Adaptrum TVWS es inteligente y se adapta a las condiciones del canal de espectro
 
     //se inserta el canal configurador, el MAC y el cntenedor de los CPE para crear los dispositivos de red inalambricos
     NetDeviceContainer cpeDevices = wifiHelper.Install(yansWifiPhy, wifiMacHelper, ruralCPE);
