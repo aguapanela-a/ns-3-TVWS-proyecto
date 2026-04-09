@@ -49,15 +49,12 @@ main(int argc, char* argv[])
     int packetSize = 1024; // Tamaño de cada ping en bytes (1 KB)
     double txPower = 23.0; // Potencia de transmisión en dBm
     double txRxSectorYaguiAntenna = 16.0; // Ganancia de transmisión  y recepción de la antena sectorial en dBi
-    double sensitivity = -120.0; // Sensibilidad de recepción en dBm, acorde a las caracterìsticas del dispositivo Adaptrum TVWS para la banda UHF
+    double sensitivity = -110.0; // Sensibilidad de recepción en dBm, acorde a las caracterìsticas del dispositivo Adaptrum TVWS para la banda UHF
     int frequency = 515; // Frecuencia de propagación de dispositivo en MHz
-    double pathLossExponent = 0.0; // Exponente de pérdida de propagación
+    double pathLossExponent = 2.0; // Exponente de pérdida de propagación
     int clientNodes = 3; // Cantidad de nodos cliente (CPEs) en la zona rural de Fusagasuga
 
 
-    //Ajuste de sensibilidad de recepciòn de cada nodo con los valores acordes al dispositivo Adaptrum TVWS para la banda UHF, lo que permite una mejor recepciòn de la señal en condiciones de propagaciòn adversas
-    //Config::SetDefault("ns3::WifiPhy::CcaEdThreshold", DoubleValue(-98.0)); // CcaEdThreshold es el umbral de energía para la detección de portadora en dBm, y es acorde a las caracterìsticas del dispositivo Adaptrum TVWS para la banda UHF
-    //Config::SetDefault("ns3::WifiPhy::RxSensitivity", DoubleValue(-98.0)); // RxSensitivity es el umbral de potencia de recepciòn en dBm, y es acorde a las caracterìsticas del dispositivo Adaptrum TVWS para la banda UHF
 
 
     Time::SetResolution(Time::NS);
@@ -76,7 +73,10 @@ main(int argc, char* argv[])
 
     std::cout << "antes de aplicar coordenadas" << std::endl;
 
-    
+    //Modificar el modelo pèrdida por rango a 10km pues se requiere que no se pierda la señal a distancias largas, lo que permite una mejor simulaciòn de las condiciones de propagaciòn en zonas rurales por distancias largas y algunos obstaculos
+    Ptr<RangePropagationLossModel> rangeLoss = CreateObject<RangePropagationLossModel>();
+    rangeLoss->SetAttribute("MaxRange", DoubleValue(10000.0)); // Establece el rango máximo de propagación a 2000 metros, lo que permite una mejor simulación de las condiciones de propagación en zonas rurales por distancias largas y algunos obstáculos    
+
     //crear helper de movilidad para agrupar la asignaciòn de coordenadas a la estaciòn base TVWS y los CPE en la zona rural de Fusagasuga
     MobilityHelper mobility;
     
@@ -86,9 +86,9 @@ main(int argc, char* argv[])
     //se asignan coordenadas a la estaciòn base TVWS y a los CPE en la zona rural de Fusagasuga
     positionAlloc->Add(Vector(0.0, 0.0, 0.0)); // Coordenadas para la estaciòn base TVWS
     
-    positionAlloc->Add(Vector(1000.0, 1000.0, 0.0)); // Coordenadas para el primer CPE
-    positionAlloc->Add(Vector(1300.0, 1500.0, 0.0)); // Coordenadas para el segundo CPE
-    positionAlloc->Add(Vector(160.0, 890.0, 0.0)); // Coordenadas para el tercer CPE
+    positionAlloc->Add(Vector(2000.0, 2000.0, 0.0)); // Coordenadas para el primer CPE
+    positionAlloc->Add(Vector(2000.0, 2000.0, 0.0)); // Coordenadas para el segundo CPE
+    positionAlloc->Add(Vector(2600.0, 2900.0, 0.0)); // Coordenadas para el tercer CPE
     
     //se asigna el posicionAlloc al helper de movilidad y se instala en la estaciòn base TVWS y los CPE en la zona rural de Fusagasuga
     mobility.SetPositionAllocator(positionAlloc);
@@ -142,7 +142,13 @@ main(int argc, char* argv[])
     yansWifiPhy.Set("CcaEdThreshold", DoubleValue(sensitivity-10.0)); // CcaEdThreshold es el umbral de energía de detección de portadora en dBm, y es acorde a las caracterìsticas del dispositivo Adaptrum TVWS para la banda UHF
     
     //Aumentar el slot time para que los paquetes tenga tiempo de propagarse en condiciones de propagaciòn adversas y largas distancias
-    yansWifiPhy.Set("Slot", TimeValue(MicroSeconds(1000))); // Slot es el tiempo de ranura en microsegundos, y se aumenta a 100 microsegundos para permitir una mejor simulaciòn de las condiciones de propagaciòn en zonas rurales por distancias largas y algunos obstaculos
+    yansWifiPhy.Set("Slot", TimeValue(MicroSeconds(100))); // Slot es el tiempo de ranura en microsegundos, y se aumenta a 100 microsegundos para permitir una mejor simulaciòn de las condiciones de propagaciòn en zonas rurales por distancias largas y algunos obstaculos
+
+    //
+    yansWifiPhy.Set("Sifs", TimeValue(MicroSeconds(100))); // Sifs es el tiempo de espera entre la transmisión de un paquete y la recepción de un ACK, y se aumenta a 100 microsegundos para permitir una mejor simulaciòn de las condiciones de propagaciòn en zonas rurales por distancias largas y algunos obstaculos
+
+    //
+    //yansWifiPhy.Set("MaxPropagationDelay", TimeValue(MicroSeconds(500))); // MaxPropagationDelay es el tiempo máximo de propagación en microsegundos, y se aumenta a 500 microsegundos para permitir una mejor simulaciòn de las condiciones de propagaciòn en zonas rurales por distancias largas y algunos obstaculos
 
     //configuraciòn de MAC para el enlace fìsico inalambrico entre la estaciòn base TVWS y los CPE en la zona rural de Fusagasuga
     WifiMacHelper wifiMacHelper;
@@ -150,12 +156,14 @@ main(int argc, char* argv[])
     Ssid ssid = Ssid("Adaptrum-TVWS-Fusagasuga");
     
     //hacemos que la base TVWS sea un punto de acceso y se ke asigna el nombre de la red con el ssid definido anteriormente
-    wifiMacHelper.SetType("ns3::ApWifiMac",
-                          "Ssid", SsidValue(ssid)); // se asigna un tiempo de espera para los ACKs de 50 ms, lo que permite una mejor simulaciòn de las condiciones de propagaciòn en zonas rurales por distancias largas y algunos obstaculos
+    wifiMacHelper.SetType("ns3::AdhocWifiMac"); // se asigna un tiempo de espera para los ACKs de 50 ms, lo que permite una mejor simulaciòn de las condiciones de propagaciòn en zonas rurales por distancias largas y algunos obstaculos
 
 
     //WifiHelper con un wifi manager ideal, pues el dispositivo Adaptrum TVWS es inteligente y se adapta a las condiciones del canal de espectro
     WifiHelper wifiHelper; 
+
+    //
+    wifiHelper.SetRemoteStationManager("ns3::IdealWifiManager"); // se asigna un tiempo de espera para los ACKs de 50 ms, lo que permite una mejor simulaciòn de las condiciones de propagaciòn en zonas rurales por distancias largas y algunos obstaculos
 
     //se configura el helper de wifi para usar el estandar 802.11a, pues usa tecnologìa ODFM, pues asì lo especifica la antena Adaptrum TVWS que se estàn simulando
     wifiHelper.SetStandard(WIFI_STANDARD_80211a); 
@@ -173,10 +181,7 @@ main(int argc, char* argv[])
 
     //configuraciòn para los CPE en la zona rural de Fusagasuga
     //se hace que los CPE sean estaciones y se asigna el nombre de la red
-    wifiMacHelper.SetType("ns3::StaWifiMac",
-                          "Ssid", SsidValue(ssid));
-
-    //wifiMacHelper.SetType("ns3::AdhocWifiMac"); //hacemos que los CPE sean nodos adhoc, lo que permite una mayor flexibilidad en la comunicaciòn con la estaciòn base TVWS, pues el dispositivo Adaptrum TVWS es inteligente y se adapta a las condiciones del canal de espectro
+    wifiMacHelper.SetType("ns3::AdhocWifiMac"); //hacemos que los CPE sean nodos adhoc, lo que permite una mayor flexibilidad en la comunicaciòn con la estaciòn base TVWS, pues el dispositivo Adaptrum TVWS es inteligente y se adapta a las condiciones del canal de espectro
 
     //se inserta el canal configurador, el MAC y el cntenedor de los CPE para crear los dispositivos de red inalambricos
     NetDeviceContainer cpeDevices = wifiHelper.Install(yansWifiPhy, wifiMacHelper, ruralCPE);
