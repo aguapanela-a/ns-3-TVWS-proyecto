@@ -141,14 +141,15 @@ main(int argc, char* argv[])
     
     //configuraciòn de MAC para el enlace fìsico inalambrico entre la estaciòn base TVWS y los CPE en la zona rural de Fusagasuga
     WifiMacHelper wifiMacHelper;
-    
     //nombre de la red que transmite la estaciòn base TVWS
     Ssid ssid = Ssid("Adaptrum-TVWS-Fusagasuga");
     
     //hacemos que la base TVWS sea un punto de acceso y se ke asigna el nombre de la red con el ssid definido anteriormente
     wifiMacHelper.SetType("ns3::ApWifiMac",
-                          "Ssid", SsidValue(ssid));
-    //wifiMacHelper.SetType("ns3::AdhocWifiMac"); //hacemos que la base TVWS sea un nodo adhoc, lo que permite una mayor flexibilidad en la comunicaciòn con los CPE en la zona rural de Fusagasuga, pues el dispositivo Adaptrum TVWS es inteligente y se adapta a las condiciones del canal de espectro
+                          "Ssid", SsidValue(ssid),
+                        "AckTimeout", TimeValue(MicroSeconds(200000)),
+                    "CtsTimeout", TimeValue(MicroSeconds(200000)),
+                "Slot", TimeValue(MicroSeconds(200000))); // se asigna un tiempo de espera para los ACKs de 50 ms, lo que permite una mejor simulaciòn de las condiciones de propagaciòn en zonas rurales por distancias largas y algunos obstaculos
 
 
     //WifiHelper con un wifi manager ideal, pues el dispositivo Adaptrum TVWS es inteligente y se adapta a las condiciones del canal de espectro
@@ -171,7 +172,10 @@ main(int argc, char* argv[])
     //configuraciòn para los CPE en la zona rural de Fusagasuga
     //se hace que los CPE sean estaciones y se asigna el nombre de la red
     wifiMacHelper.SetType("ns3::StaWifiMac",
-                          "Ssid", SsidValue(ssid));
+                          "Ssid", SsidValue(ssid),
+                          "AckTimeout", TimeValue(MicroSeconds(200000)),
+                    "CtsTimeout", TimeValue(MicroSeconds(200000)),
+                "Slot", TimeValue(MicroSeconds(200000)));
 
     //wifiMacHelper.SetType("ns3::AdhocWifiMac"); //hacemos que los CPE sean nodos adhoc, lo que permite una mayor flexibilidad en la comunicaciòn con la estaciòn base TVWS, pues el dispositivo Adaptrum TVWS es inteligente y se adapta a las condiciones del canal de espectro
 
